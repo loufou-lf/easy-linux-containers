@@ -1,0 +1,7 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+    container_name: lxc-frontend
+    ports:
+      - "6780:80"
