@@ -14,7 +14,11 @@ CONTAINER_PASSWORD="$3"
 CONTAINER_DISTRO="$4"
 CONTAINER_VERSION="$5"
 
-CONTAINER_IMAGE="images:$CONTAINER_DISTRO/$CONTAINER_VERSION"
+if [ "$CONTAINER_DISTRO" == "kali" ]; then
+  CONTAINER_IMAGE="images:kali"
+else
+  CONTAINER_IMAGE="images:$CONTAINER_DISTRO/$CONTAINER_VERSION"
+fi
 
 # Container creation
 echo "[create] Launching LXD container with name $CONTAINER_NAME and image $CONTAINER_IMAGE"
