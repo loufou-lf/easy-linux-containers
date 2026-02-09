@@ -3,21 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <title>Easy LXC</title>
+  <link rel="icon" type="image/x-icon" href="static/assets/favicon.ico">
   <link rel="stylesheet" href="static/css/style.css">
 </head>
 <body>
-  <h1>Easy LXC</h1>
+  <h1>Easy LXC Dashboard</h1>
+
+  <div class="banner">
+    <h3>Create New Container</h3>
+    <div class="form-group">
+        <input type="text" id="cName" placeholder="Name (e.g. web-01)">
+        <input type="text" id="cUser" placeholder="User (e.g. admin)">
+        <input type="password" id="cPass" placeholder="Password">
+
+        <select id="osSelect" onchange="updateVersions()">
+        </select>
+        <select id="versionSelect">
+        </select>
+
+        <button class="start-btn" onclick="createContainer()">Create</button>
+    </div>
+  </div>
+
   <table id="containerTable">
     <thead>
       <tr>
         <th>Name</th>
         <th>Status</th>
         <th>IP Address</th>
-      </tr>
+        <th>Memory</th>
+        <th>Disk</th>
+        <th>CPU Time</th>
+        <th>OS</th>
+        <th>Action</th> </tr>
     </thead>
     <tbody>
-      <!-- Containers list -->
-    </tbody>
+      </tbody>
   </table>
   <script src="static/js/script.js"></script>
 </body>

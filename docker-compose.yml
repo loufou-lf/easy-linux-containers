@@ -5,3 +5,17 @@ services:
     container_name: lxc-frontend
     ports:
       - "6780:80"
+  backend:
+    build:
+      context: ./backend
+    container_name: lxc-backend
+    ports:
+      - "6700:8000"
+    volumes:
+      - /var/snap/lxd/common/lxd/unix.socket:/var/snap/lxd/common/lxd/unix.socket
+      - /snap/lxd/current/bin/lxc:/usr/local/bin/lxc:ro
+      - ${HOME}/.ssh/id_ed25519.pub:/root/host_key.pub:ro
+    environment:
+      - LXD_DIR=/var/snap/lxd/common/lxd
+      - LD_LIBRARY_PATH=/snap/lxd/current/lib
+    restart: unless-stopped
