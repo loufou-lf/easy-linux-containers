@@ -15,14 +15,259 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-body { font-family: Arial, sans-serif; margin: 30px; }
-table { border-collapse: collapse; width: 60%; }
-th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-th { background-color: #f2f2f2; }
-.form-group { margin-bottom: 10px; }
-input { padding: 5px; margin-right: 10px; }
-button { padding: 5px 10px; cursor: pointer; }
-.delete-btn { background-color: #ff4444; color: white; border: none; }
-.start-btn { background-color: #2196F3; color: white; border: none;  }
-.stop-btn { background-color: #ffeb3b; color: white; border: none; }
-.banner { background:#f9f9f9; padding:15px; margin-bottom:20px; border:1px solid #ddd; }
+/* ==========================================================================
+   CSS Variables
+   ========================================================================== */
+
+:root {
+  /* Primary colors */
+  --color-primary: #e44c1d;
+  --color-primary-light: #f06d45;
+
+  /* Secondary colors (grays) */
+  --color-secondary: #898989;
+  --color-secondary-light: #d0d2d3;
+
+  /* Dark colors */
+  --color-dark: #2d2d2d;
+  --color-dark-light: #404040;
+
+  /* Status colors */
+  --color-danger: #c0392b;
+  --color-warning: #f39c12;
+  --color-info: #2980b9;
+  --color-success: #27ae60;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 15px;
+  --spacing-xl: 20px;
+  --spacing-xxl: 30px;
+
+  /* Border radius */
+  --radius-sm: 4px;
+
+  /* Shadows */
+  --shadow-toast: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  /* Typography */
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-size-sm: 0.85rem;
+  --font-size-base: 14px;
+
+  /* Transitions */
+  --transition-fast: 0.2s;
+  --transition-medium: 0.3s;
+}
+
+/* ==========================================================================
+   Base and Layout
+   ========================================================================== */
+
+body {
+  background-color: var(--color-secondary-light);
+  font-family: var(--font-family);
+  color: var(--color-dark);
+  margin: var(--spacing-xxl);
+}
+
+.banner {
+  background: white;
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  border: 1px solid var(--color-secondary);
+  border-left: 5px solid var(--color-primary);
+}
+
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  background: white;
+}
+
+th,
+td {
+  border: 1px solid var(--color-secondary-light);
+  padding: var(--spacing-md) var(--spacing-sm);
+  text-align: center;
+}
+
+th {
+  background-color: var(--color-dark);
+  color: white;
+  text-transform: uppercase;
+  font-size: var(--font-size-sm);
+  letter-spacing: 1px;
+}
+
+/* ==========================================================================
+   Forms and Buttons
+   ========================================================================== */
+
+.form-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+input {
+  padding: var(--spacing-sm);
+  margin-right: 10px;
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--radius-sm);
+}
+
+button {
+  padding: var(--spacing-sm) 16px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  transition: opacity var(--transition-fast);
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+/* Action Buttons */
+.start-btn {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+}
+
+.stop-btn {
+  background-color: var(--color-dark-light);
+  color: white;
+  border: none;
+}
+
+.delete-btn {
+  background-color: var(--color-danger);
+  color: white;
+  border: none;
+}
+
+/* ==========================================================================
+   Toasts and Notifications
+   ========================================================================== */
+
+#toast-container {
+  position: fixed;
+  top: var(--spacing-xl);
+  right: var(--spacing-xl);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  min-width: 300px;
+  max-width: 400px;
+  background: white;
+  color: var(--color-dark);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-toast);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-base);
+  border-left: 6px solid var(--color-primary);
+  animation: slideIn var(--transition-medium) ease forwards;
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+/* Exit animation */
+.toast.hide {
+  animation: slideOut var(--transition-medium) ease forwards;
+}
+
+/* Toast type colors */
+.toast.success {
+  border-left-color: var(--color-success);
+}
+
+.toast.success .icon {
+  color: var(--color-success);
+}
+
+.toast.error {
+  border-left-color: var(--color-danger);
+}
+
+.toast.error .icon {
+  color: var(--color-danger);
+}
+
+.toast.warning {
+  border-left-color: var(--color-warning);
+}
+
+.toast.warning .icon {
+  color: var(--color-warning);
+}
+
+.toast.info {
+  border-left-color: var(--color-info);
+}
+
+.toast.info .icon {
+  color: var(--color-info);
+}
+
+/* Toast internal structure */
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-weight: 500;
+}
+
+.toast-close {
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--color-secondary);
+  background: none;
+  border: none;
+  margin-left: 10px;
+  padding: 0;
+  line-height: 1;
+  transition: color var(--transition-fast);
+}
+
+.toast-close:hover {
+  color: var(--color-dark);
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}

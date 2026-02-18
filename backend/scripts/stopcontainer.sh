@@ -15,17 +15,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-# Check args
+# =============================================================================
+# Script: stop-ct
+# Description: Stop an LXD container
+# Usage: stop-ct <name>
+# =============================================================================
+
 if [ ! $# -eq 1 ]; then
-  echo "[args] Invalid args !"
-  echo "[args] $0 {name}"
-  exit 1
+    echo "[error] Invalid arguments"
+    echo "[usage] $0 <name>"
+    exit 1
 fi
 
-# Container vars
 CONTAINER_NAME=$1
 
-echo "[stop] Stopping container $CONTAINER_NAME"
+echo "[stop] Stopping container: $CONTAINER_NAME"
 lxc stop "$CONTAINER_NAME"
 
 exit 0

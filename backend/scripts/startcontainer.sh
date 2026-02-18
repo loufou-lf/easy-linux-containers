@@ -15,17 +15,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-# Check args
+# =============================================================================
+# Script: start-ct
+# Description: Start an LXD container
+# Usage: start-ct <name>
+# =============================================================================
+
 if [ ! $# -eq 1 ]; then
-  echo "[args] Invalid args !"
-  echo "[args] $0 {name}"
-  exit 1
+    echo "[error] Invalid arguments"
+    echo "[usage] $0 <name>"
+    exit 1
 fi
 
-# Container vars
 CONTAINER_NAME=$1
 
-echo "[start] Starting container $CONTAINER_NAME"
+echo "[start] Starting container: $CONTAINER_NAME"
 lxc start "$CONTAINER_NAME"
 
 exit 0

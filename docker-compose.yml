@@ -1,10 +1,18 @@
+# =============================================================================
+# Easy LXC - Docker Compose Configuration
+# Description: Orchestrates frontend and backend services
+# =============================================================================
+
 services:
+  # Web Dashboard (Nginx)
   frontend:
     build:
       context: ./frontend
     container_name: lxc-frontend
     ports:
       - "6780:80"
+
+  # REST API (FastAPI)
   backend:
     build:
       context: ./backend

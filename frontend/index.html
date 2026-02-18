@@ -2,61 +2,87 @@
 <html lang="en">
 <head>
   <!--
-  Copyright (c) 2026 LouFou (https://github.com/loufou-lf)
+    Copyright (c) 2026 LouFou (https://github.com/loufou-lf)
 
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License
-  along with this program. If not, see <https://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with this program. If not, see <https://www.gnu.org/licenses/>.
   -->
-
   <meta charset="UTF-8">
   <title>Easy LXC</title>
   <link rel="icon" type="image/x-icon" href="static/assets/favicon.ico">
   <link rel="stylesheet" href="static/css/style.css">
+  <link rel="stylesheet" href="static/css/customalert.css">
 </head>
 <body>
   <h1>Easy LXC Dashboard</h1>
 
+  <!-- Container Management Section -->
   <div class="banner">
-    <h3>Create New Container</h3>
+    <h2>Create New Container</h2>
     <div class="form-group">
-        <input type="text" id="cName" placeholder="Name (e.g. web-01)">
-        <input type="text" id="cUser" placeholder="User (e.g. admin)">
-        <input type="password" id="cPass" placeholder="Password">
-
-        <select id="osSelect" onchange="updateVersions()">
-        </select>
-        <select id="versionSelect">
-        </select>
-
-        <button class="start-btn" onclick="createContainer()">Create</button>
+      <input type="text" id="cName" placeholder="Name (e.g. web-01)">
+      <input type="text" id="cUser" placeholder="User (e.g. admin)">
+      <input type="password" id="cPass" placeholder="Password">
+      <select id="osSelect" onchange="updateVersions()"></select>
+      <select id="versionSelect"></select>
+      <button class="start-btn" onclick="createContainer()">Create</button>
     </div>
+
+    <table id="containerTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Status</th>
+          <th>IP Address</th>
+          <th>Memory</th>
+          <th>Disk</th>
+          <th>CPU Time</th>
+          <th>OS</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
-  <table id="containerTable">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Status</th>
-        <th>IP Address</th>
-        <th>Memory</th>
-        <th>Disk</th>
-        <th>CPU Time</th>
-        <th>OS</th>
-        <th>Action</th> </tr>
-    </thead>
-    <tbody>
-      </tbody>
-  </table>
+  <!-- Port Redirection Section -->
+  <div class="banner">
+    <h2>Port Redirection</h2>
+    <div class="form-group">
+      <select id="exposeContainerSelect">
+        <option value="">-- Choose a container --</option>
+      </select>
+      <input type="number" id="hostPort" placeholder="Host Port (e.g. 8080)">
+      <span>&#10132;</span>
+      <input type="number" id="containerPort" placeholder="Container Port (e.g. 80)">
+      <button class="start-btn" onclick="exposePort()">Expose</button>
+    </div>
+
+    <table id="redirectionsTable">
+      <thead>
+        <tr>
+          <th>Container</th>
+          <th>Proxy Name</th>
+          <th>Host Port</th>
+          <th>Target Port</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
   <script src="static/js/script.js"></script>
+  <script src="static/js/customalert.js"></script>
 </body>
 </html>
