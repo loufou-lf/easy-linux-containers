@@ -83,6 +83,83 @@ const Toaster = {
     }
 
     toast.querySelector('.toast-close').addEventListener('click', removeToast);
+  },
+
+  /**
+   * Display a confirmation dialog
+   * @param {string} message - The message to display (supports HTML)
+   * @param {Function} onConfirm - Callback when user confirms
+   * @param {string} type - Dialog type: 'danger', 'warning', 'info'
+   * @param {string} title - Optional custom title
+   */
+  ask(message, onConfirm, type = 'info', title = null) {
+    // SVG icons for modal header
+    const icons = {
+      danger: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`,
+      warning: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+      info: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`
+    };
+
+    const titles = {
+      danger: 'Confirm Deletion',
+      warning: 'Warning',
+      info: 'Confirm'
+    };
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.classList.add('modal-overlay');
+
+    // Create modal dialog
+    overlay.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-header ${type}">
+          <span class="modal-icon">${icons[type] || icons.info}</span>
+          <h3 class="modal-title">${title || titles[type] || 'Confirm'}</h3>
+        </div>
+        <div class="modal-body">
+          ${message}
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn modal-btn-cancel">Cancel</button>
+          <button class="modal-btn modal-btn-confirm ${type}">Confirm</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Close modal function
+    const closeModal = () => {
+      overlay.classList.add('hide');
+      overlay.addEventListener('animationend', () => overlay.remove());
+    };
+
+    // Event listeners
+    overlay.querySelector('.modal-btn-cancel').addEventListener('click', closeModal);
+
+    overlay.querySelector('.modal-btn-confirm').addEventListener('click', () => {
+      closeModal();
+      if (typeof onConfirm === 'function') {
+        onConfirm();
+      }
+    });
+
+    // Close on overlay click (outside dialog)
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeModal();
+      }
+    });
+
+    // Close on Escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
   }
 };
 
@@ -128,6 +205,53 @@ async function copyText(textToCopy) {
   }
 
   document.body.removeChild(textArea);
+}
+
+/* ==========================================================================
+   Task Tracking
+   ========================================================================== */
+
+/**
+ * Poll for task completion and show result via toast
+ * @param {string} taskId - The task ID to poll
+ * @param {number} interval - Polling interval in ms
+ * @param {number} maxAttempts - Maximum polling attempts
+ */
+async function pollTaskStatus(taskId, interval = 2000, maxAttempts = 60) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const res = await fetch(`${API_URL}/tasks/${taskId}`);
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          Toaster.show("Task not found or expired.", "warning");
+          return;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const task = await res.json();
+
+      if (task.completed) {
+        if (task.status === "success") {
+          Toaster.show(task.message || `${task.action} completed.`, "success");
+        } else if (task.status === "error") {
+          Toaster.show(`Error: ${task.error || 'Unknown error'}`, "error");
+        }
+        loadContainers();
+        return;
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, interval));
+    } catch (err) {
+      console.error("Error polling task:", err);
+      Toaster.show("Error checking task status.", "error");
+      return;
+    }
+  }
+
+  Toaster.show("Task is taking too long. Check back later.", "warning");
 }
 
 /* ==========================================================================
@@ -305,7 +429,7 @@ async function createContainer() {
     return;
   }
 
-  Toaster.show(`Creating container '${name}'. This will take a minute.`);
+  Toaster.show(`Creating container '${name}'. This will take a minute...`, "info", 0);
 
   try {
     const res = await fetch(`${API_URL}/containers`, {
@@ -314,11 +438,19 @@ async function createContainer() {
       body: JSON.stringify({ name, user, password: pass, distro, version })
     });
     const data = await res.json();
-    Toaster.show(data.message, "success");
+
+    // Clear form
     document.getElementById('cName').value = '';
     document.getElementById('cUser').value = '';
     document.getElementById('cPass').value = '';
-    loadContainers();
+
+    // Poll for task completion
+    if (data.task_id) {
+      pollTaskStatus(data.task_id, 3000, 120);
+    } else {
+      Toaster.show(data.message, "success");
+      loadContainers();
+    }
   } catch (err) {
     Toaster.show("Error creating container: " + err, "error");
   }
@@ -328,30 +460,55 @@ async function createContainer() {
  * Delete a container
  * @param {string} name - Container name
  */
-async function deleteContainer(name) {
-  if (!confirm(`Are you sure you want to DELETE '${name}'?`)) return;
+function deleteContainer(name) {
+  Toaster.ask(
+    `Are you sure you want to <strong>delete</strong> the container '${name}'?`,
+    async () => {
+      Toaster.show(`Deleting container '${name}'...`, "info");
 
-  try {
-    await fetch(`${API_URL}/containers/${name}`, { method: 'DELETE' });
-    loadContainers();
-  } catch (err) {
-    Toaster.show("Error deleting: " + err);
-  }
+      try {
+        const res = await fetch(`${API_URL}/containers/${name}`, { method: 'DELETE' });
+        const data = await res.json();
+
+        if (!res.ok) {
+          Toaster.show(`Error: ${data.detail || 'Failed to delete'}`, "error");
+        } else {
+          Toaster.show(data.message || `Container ${name} deleted.`, "success");
+        }
+        loadContainers();
+      } catch (err) {
+        Toaster.show("Error deleting: " + err, "error");
+      }
+    },
+    'danger'
+  );
 }
 
 /**
  * Stop a container
  * @param {string} name - Container name
  */
-async function stopContainer(name) {
-  if (!confirm(`Are you sure you want to STOP '${name}'?`)) return;
+function stopContainer(name) {
+  Toaster.ask(
+    `Are you sure you want to <strong>stop</strong> the container '${name}'?`,
+    async () => {
+      Toaster.show(`Stopping container '${name}'...`, "info");
 
-  try {
-    await fetch(`${API_URL}/containers/${name}/stop`, { method: 'POST' });
-    loadContainers();
-  } catch (err) {
-    Toaster.show("Error stopping: " + err, "error");
-  }
+      try {
+        const res = await fetch(`${API_URL}/containers/${name}/stop`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.task_id) {
+          pollTaskStatus(data.task_id);
+        } else {
+          loadContainers();
+        }
+      } catch (err) {
+        Toaster.show("Error stopping: " + err, "error");
+      }
+    },
+    'warning'
+  );
 }
 
 /**
@@ -359,11 +516,17 @@ async function stopContainer(name) {
  * @param {string} name - Container name
  */
 async function startContainer(name) {
-  Toaster.show(`Starting container '${name}'.`);
+  Toaster.show(`Starting container '${name}'...`, "info");
 
   try {
-    await fetch(`${API_URL}/containers/${name}/start`, { method: 'POST' });
-    loadContainers();
+    const res = await fetch(`${API_URL}/containers/${name}/start`, { method: 'POST' });
+    const data = await res.json();
+
+    if (data.task_id) {
+      pollTaskStatus(data.task_id);
+    } else {
+      loadContainers();
+    }
   } catch (err) {
     Toaster.show("Error starting: " + err, "error");
   }

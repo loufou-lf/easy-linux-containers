@@ -94,13 +94,23 @@ lxc exec "$CONTAINER_NAME" -- sh -c "
     chmod 700 /home/$CONTAINER_USER/.ssh
     chmod 600 /home/$CONTAINER_USER/.ssh/authorized_keys
 
+    # Configure sshd for key-based authentication
     if [ -f /etc/ssh/sshd_config ]; then
-        sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-        sed -i 's/^#\?PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+        sed -i 's/^#\\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+        sed -i 's/^#\\?PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+        sed -i 's/^#\\?AuthorizedKeysFile.*/AuthorizedKeysFile .ssh\\/authorized_keys/' /etc/ssh/sshd_config
     fi
 
+    # Override any sshd_config.d settings that might enable password auth
+    if [ -d /etc/ssh/sshd_config.d ]; then
+        echo 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/90-easy-lxc.conf
+        echo 'PubkeyAuthentication yes' >> /etc/ssh/sshd_config.d/90-easy-lxc.conf
+    fi
+
+    # Enable and restart sshd service
     systemctl daemon-reload
-    systemctl enable --now ssh 2>/dev/null || systemctl enable --now sshd
+    systemctl enable ssh 2>/dev/null || systemctl enable sshd 2>/dev/null
+    systemctl restart ssh 2>/dev/null || systemctl restart sshd 2>/dev/null
 "
 
 # -----------------------------------------------------------------------------

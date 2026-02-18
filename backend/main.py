@@ -27,6 +27,10 @@ import json
 import os
 import time
 import platform
+import uuid
+from typing import Optional
+from dataclasses import dataclass, field
+from datetime import datetime
 
 # =============================================================================
 # Configuration
@@ -44,6 +48,23 @@ LXD_ENV = {
 }
 
 WHITELIST_OS = ["debian", "ubuntu", "kali"]
+
+# Task tracking storage
+TASK_STORE = {}
+TASK_EXPIRY = 300  # Tasks expire after 5 minutes
+
+
+@dataclass
+class TaskResult:
+    """Represents the result of a background task."""
+    task_id: str
+    status: str  # 'pending', 'running', 'success', 'error'
+    action: str
+    target: str
+    message: Optional[str] = None
+    error: Optional[str] = None
+    created_at: float = field(default_factory=time.time)
+    completed_at: Optional[float] = None
 
 # =============================================================================
 # Application Setup
@@ -88,26 +109,75 @@ class ExposeRequest(BaseModel):
 # =============================================================================
 
 
-def run_script(script_name: str, args: list) -> None:
+def cleanup_old_tasks():
+    """Remove expired tasks from the store."""
+    current_time = time.time()
+    expired = [
+        task_id for task_id, task in TASK_STORE.items()
+        if current_time - task.created_at > TASK_EXPIRY
+    ]
+    for task_id in expired:
+        del TASK_STORE[task_id]
+
+
+def run_script(script_name: str, args: list) -> dict:
     """
     Execute a shell script with the given arguments.
 
     Args:
         script_name: Name of the script in /usr/local/bin/
         args: List of command-line arguments
+
+    Returns:
+        dict with 'success', 'stdout', 'stderr' keys
     """
     command = [f"/usr/local/bin/{script_name}"] + args
     try:
-        subprocess.run(
+        result = subprocess.run(
             command,
             env=LXD_ENV,
             check=True,
             capture_output=True,
             text=True
         )
+        return {
+            "success": True,
+            "stdout": result.stdout,
+            "stderr": result.stderr
+        }
     except subprocess.CalledProcessError as e:
         print(f"Error running {script_name}: {e.stderr}")
-        raise e
+        return {
+            "success": False,
+            "stdout": e.stdout,
+            "stderr": e.stderr
+        }
+
+
+def run_tracked_task(task_id: str, script_name: str, args: list, action: str, target: str):
+    """
+    Run a script and track its status in TASK_STORE.
+
+    Args:
+        task_id: Unique task identifier
+        script_name: Name of the script to run
+        args: Arguments for the script
+        action: Human-readable action name
+        target: Target of the action (e.g., container name)
+    """
+    TASK_STORE[task_id].status = "running"
+
+    result = run_script(script_name, args)
+
+    task = TASK_STORE[task_id]
+    task.completed_at = time.time()
+
+    if result["success"]:
+        task.status = "success"
+        task.message = f"{action} completed successfully for {target}"
+    else:
+        task.status = "error"
+        task.error = result["stderr"].strip() or "Unknown error occurred"
 
 
 # =============================================================================
@@ -242,39 +312,121 @@ def list_containers():
     except Exception as e:
         return {"error": str(e)}
 
+
+# =============================================================================
+# Task Tracking Endpoints
+# =============================================================================
+
+
+@app.get("/tasks/{task_id}")
+def get_task_status(task_id: str):
+    """Get the status of a background task."""
+    cleanup_old_tasks()
+
+    if task_id not in TASK_STORE:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task = TASK_STORE[task_id]
+    return {
+        "task_id": task.task_id,
+        "status": task.status,
+        "action": task.action,
+        "target": task.target,
+        "message": task.message,
+        "error": task.error,
+        "completed": task.status in ["success", "error"]
+    }
+
+
 @app.post("/containers")
 async def create_container(req: ContainerRequest, background_tasks: BackgroundTasks):
     """Create a new container in the background."""
+    task_id = str(uuid.uuid4())
     distro_clean = req.distro.lower().replace(" ", "")
-    background_tasks.add_task(
-        run_script, "create-ct",
-        [req.name, req.user, req.password, distro_clean, req.version]
+
+    # Create task entry
+    TASK_STORE[task_id] = TaskResult(
+        task_id=task_id,
+        status="pending",
+        action="Container creation",
+        target=req.name
     )
-    return {"message": f"Creation of {req.name} ({req.distro}) started via script."}
+
+    background_tasks.add_task(
+        run_tracked_task,
+        task_id,
+        "create-ct",
+        [req.name, req.user, req.password, distro_clean, req.version],
+        "Container creation",
+        req.name
+    )
+
+    return {
+        "message": f"Creation of {req.name} ({req.distro}) started.",
+        "task_id": task_id
+    }
 
 
 @app.delete("/containers/{name}")
 def delete_container(name: str):
     """Delete a container by name."""
-    try:
-        run_script("delete-ct", [name])
+    result = run_script("delete-ct", [name])
+
+    if result["success"]:
         return {"message": f"Container {name} deleted."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete: {str(e)}")
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail=result["stderr"].strip() or "Failed to delete container"
+        )
 
 
 @app.post("/containers/{name}/stop")
 async def stop_container(name: str, background_tasks: BackgroundTasks):
     """Stop a running container."""
-    background_tasks.add_task(run_script, "stop-ct", [name])
-    return {"message": f"Stopping container {name}."}
+    task_id = str(uuid.uuid4())
+
+    TASK_STORE[task_id] = TaskResult(
+        task_id=task_id,
+        status="pending",
+        action="Stop container",
+        target=name
+    )
+
+    background_tasks.add_task(
+        run_tracked_task,
+        task_id,
+        "stop-ct",
+        [name],
+        "Stop container",
+        name
+    )
+
+    return {"message": f"Stopping container {name}.", "task_id": task_id}
 
 
 @app.post("/containers/{name}/start")
 async def start_container(name: str, background_tasks: BackgroundTasks):
     """Start a stopped container."""
-    background_tasks.add_task(run_script, "start-ct", [name])
-    return {"message": f"Starting container {name}."}
+    task_id = str(uuid.uuid4())
+
+    TASK_STORE[task_id] = TaskResult(
+        task_id=task_id,
+        status="pending",
+        action="Start container",
+        target=name
+    )
+
+    background_tasks.add_task(
+        run_tracked_task,
+        task_id,
+        "start-ct",
+        [name],
+        "Start container",
+        name
+    )
+
+    return {"message": f"Starting container {name}.", "task_id": task_id}
 
 
 # =============================================================================
