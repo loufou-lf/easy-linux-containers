@@ -338,9 +338,15 @@ async function loadContainers() {
     const response = await fetch(`${API_URL}/containers`);
     const data = await response.json();
 
+    // Expose select dropdown for port redirection
+    const exposeSelect = document.getElementById('exposeContainerSelect');
+    let currentSelection = "";
+
+    // Containers table
     const tbody = document.querySelector("#containerTable tbody");
     tbody.innerHTML = "";
 
+    // Update containers table
     if (!data.containers || data.containers.length === 0) {
       tbody.innerHTML = '<tr><td colspan="8">No containers found.</td></tr>';
     } else {
@@ -349,8 +355,6 @@ async function loadContainers() {
         return;
         }
 
-        const exposeSelect = document.getElementById('exposeContainerSelect');
-        let currentSelection = "";
         if (exposeSelect) {
         currentSelection = exposeSelect.value;
         exposeSelect.innerHTML = '<option value="">-- Choose a container --</option>';
