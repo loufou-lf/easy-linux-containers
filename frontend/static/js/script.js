@@ -327,84 +327,88 @@ async function loadContainers() {
     const tbody = document.querySelector("#containerTable tbody");
     tbody.innerHTML = "";
 
-    if (data.error) {
-      tbody.innerHTML = `<tr><td colspan="8">Error: ${data.error}</td></tr>`;
-      return;
-    }
-
-    const exposeSelect = document.getElementById('exposeContainerSelect');
-    let currentSelection = "";
-    if (exposeSelect) {
-      currentSelection = exposeSelect.value;
-      exposeSelect.innerHTML = '<option value="">-- Choose a container --</option>';
-    }
-
-    data.containers.forEach(c => {
-      const row = document.createElement("tr");
-
-      const ramDisplay = c.status === "Running" ? formatBytes(c.memory) : "-";
-      const diskDisplay = c.status === "Running" ? formatBytes(c.disk) : "-";
-      const cpuDisplay = c.status === "Running" ? `${c.cpu_time}` : "-";
-
-      const actionBtn = (c.status === "Running" || c.status === "RUNNING")
-        ? `<button class="stop-btn" onclick="stopContainer('${c.name}')">Stop</button>`
-        : `<button class="start-btn" onclick="startContainer('${c.name}')">Start</button>`;
-
-      const ipDisplay = c.ipv4
-        ? `${c.ipv4} <button class="copy-btn" onclick="copyText('${c.ipv4}')">COPY</button>`
-        : `-`;
-
-      row.innerHTML = `
-        <td><strong>${c.name}</strong></td>
-        <td>${c.status}</td>
-        <td>${ipDisplay}</td>
-        <td>${ramDisplay}</td>
-        <td>${diskDisplay}</td>
-        <td>${cpuDisplay}</td>
-        <td>${c.os} ${c.release} (${c.architecture})</td>
-        <td>
-          <button class="delete-btn" onclick="deleteContainer('${c.name}')">Delete</button>
-          ${actionBtn}
-        </td>
-      `;
-
-      tbody.appendChild(row);
-
-      if (exposeSelect && (c.status === "Running" || c.status === "RUNNING")) {
-        const opt = document.createElement('option');
-        opt.value = c.name;
-        opt.text = c.name;
-        exposeSelect.appendChild(opt);
-      }
-
-      // Update redirections table
-      const redTbody = document.querySelector("#redirectionsTable tbody");
-      if (redTbody) {
-        redTbody.innerHTML = "";
-
-        if (data.redirections && data.redirections.length > 0) {
-          data.redirections.forEach(r => {
-            const tr = document.createElement("tr");
-
-            const hostPort = r.listen.replace('tcp:0.0.0.0:', '').replace('tcp:', '');
-            const targetPort = r.connect.replace('tcp:127.0.0.1:', '').replace('tcp:', '');
-
-            tr.innerHTML = `
-              <td><strong>${r.container}</strong></td>
-              <td>${r.device_name}</td>
-              <td><strong style="color: var(--color-primary);">${hostPort}</strong></td>
-              <td>${targetPort}</td>
-              <td>
-                <button class="delete-btn" onclick="deleteRedirection('${r.container}', '${r.device_name}')">Delete</button>
-              </td>
-            `;
-            redTbody.appendChild(tr);
-          });
-        } else {
-          redTbody.innerHTML = '<tr><td colspan="5">No active redirections.</td></tr>';
+    if (!data.containers || data.containers.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8">No containers found.</td></tr>';
+    } else {
+        if (data.error) {
+        tbody.innerHTML = `<tr><td colspan="8">Error: ${data.error}</td></tr>`;
+        return;
         }
+
+        const exposeSelect = document.getElementById('exposeContainerSelect');
+        let currentSelection = "";
+        if (exposeSelect) {
+        currentSelection = exposeSelect.value;
+        exposeSelect.innerHTML = '<option value="">-- Choose a container --</option>';
+        }
+
+        data.containers.forEach(c => {
+        const row = document.createElement("tr");
+
+        const ramDisplay = c.status === "Running" ? formatBytes(c.memory) : "-";
+        const diskDisplay = c.status === "Running" ? formatBytes(c.disk) : "-";
+        const cpuDisplay = c.status === "Running" ? `${c.cpu_time}` : "-";
+
+        const actionBtn = (c.status === "Running" || c.status === "RUNNING")
+            ? `<button class="stop-btn" onclick="stopContainer('${c.name}')">Stop</button>`
+            : `<button class="start-btn" onclick="startContainer('${c.name}')">Start</button>`;
+
+        const ipDisplay = c.ipv4
+            ? `${c.ipv4} <button class="copy-btn" onclick="copyText('${c.ipv4}')">COPY</button>`
+            : `-`;
+
+        row.innerHTML = `
+            <td><strong>${c.name}</strong></td>
+            <td>${c.status}</td>
+            <td>${ipDisplay}</td>
+            <td>${ramDisplay}</td>
+            <td>${diskDisplay}</td>
+            <td>${cpuDisplay}</td>
+            <td>${c.os} ${c.release} (${c.architecture})</td>
+            <td>
+            <button class="delete-btn" onclick="deleteContainer('${c.name}')">Delete</button>
+            ${actionBtn}
+            </td>
+        `;
+
+        tbody.appendChild(row);
+
+        if (exposeSelect && (c.status === "Running" || c.status === "RUNNING")) {
+            const opt = document.createElement('option');
+            opt.value = c.name;
+            opt.text = c.name;
+            exposeSelect.appendChild(opt);
+        }
+        });
+    }
+
+    // Update redirections table
+    const redTbody = document.querySelector("#redirectionsTable tbody");
+    if (redTbody) {
+      redTbody.innerHTML = "";
+
+      if (data.redirections && data.redirections.length > 0) {
+        data.redirections.forEach(r => {
+          const tr = document.createElement("tr");
+              
+          const hostPort = r.listen.replace('tcp:0.0.0.0:', '').replace('tcp:', '');
+          const targetPort = r.connect.replace('tcp:127.0.0.1:', '').replace('tcp:', '');
+
+          tr.innerHTML = `
+            <td><strong>${r.container}</strong></td>
+            <td>${r.device_name}</td>
+            <td><strong style="color: var(--color-primary);">${hostPort}</strong></td>
+            <td>${targetPort}</td>
+            <td>
+              <button class="delete-btn" onclick="deleteRedirection('${r.container}', '${r.device_name}')">Delete</button>
+            </td>
+          `;
+          redTbody.appendChild(tr);
+        });
+      } else {
+        redTbody.innerHTML = '<tr><td colspan="5">No active redirections.</td></tr>';
       }
-    });
+    }
 
     if (exposeSelect && currentSelection) {
       exposeSelect.value = currentSelection;
@@ -460,55 +464,47 @@ async function createContainer() {
  * Delete a container
  * @param {string} name - Container name
  */
-function deleteContainer(name) {
-  Toaster.ask(
-    `Are you sure you want to <strong>delete</strong> the container '${name}'?`,
-    async () => {
-      Toaster.show(`Deleting container '${name}'...`, "info");
+async function deleteContainer(name) {
+  if (!confirm(`Are you sure you want to DELETE '${name}'?`)) return;
 
-      try {
-        const res = await fetch(`${API_URL}/containers/${name}`, { method: 'DELETE' });
-        const data = await res.json();
+  Toaster.show(`Deleting container '${name}'...`, "info");
 
-        if (!res.ok) {
-          Toaster.show(`Error: ${data.detail || 'Failed to delete'}`, "error");
-        } else {
-          Toaster.show(data.message || `Container ${name} deleted.`, "success");
-        }
-        loadContainers();
-      } catch (err) {
-        Toaster.show("Error deleting: " + err, "error");
-      }
-    },
-    'danger'
-  );
+  try {
+    const res = await fetch(`${API_URL}/containers/${name}`, { method: 'DELETE' });
+    const data = await res.json();
+
+    if (!res.ok) {
+      Toaster.show(`Error: ${data.detail || 'Failed to delete'}`, "error");
+    } else {
+      Toaster.show(data.message || `Container ${name} deleted.`, "success");
+    }
+    loadContainers();
+  } catch (err) {
+    Toaster.show("Error deleting: " + err, "error");
+  }
 }
 
 /**
  * Stop a container
  * @param {string} name - Container name
  */
-function stopContainer(name) {
-  Toaster.ask(
-    `Are you sure you want to <strong>stop</strong> the container '${name}'?`,
-    async () => {
-      Toaster.show(`Stopping container '${name}'...`, "info");
+async function stopContainer(name) {
+  if (!confirm(`Are you sure you want to STOP '${name}'?`)) return;
 
-      try {
-        const res = await fetch(`${API_URL}/containers/${name}/stop`, { method: 'POST' });
-        const data = await res.json();
+  Toaster.show(`Stopping container '${name}'...`, "info");
 
-        if (data.task_id) {
-          pollTaskStatus(data.task_id);
-        } else {
-          loadContainers();
-        }
-      } catch (err) {
-        Toaster.show("Error stopping: " + err, "error");
-      }
-    },
-    'warning'
-  );
+  try {
+    const res = await fetch(`${API_URL}/containers/${name}/stop`, { method: 'POST' });
+    const data = await res.json();
+
+    if (data.task_id) {
+      pollTaskStatus(data.task_id);
+    } else {
+      loadContainers();
+    }
+  } catch (err) {
+    Toaster.show("Error stopping: " + err, "error");
+  }
 }
 
 /**
