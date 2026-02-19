@@ -86,6 +86,19 @@ const Toaster = {
   },
 
   /**
+   * Clear all current toasts
+   */
+  clearAll() {
+    const container = document.getElementById('toast-container');
+    if (container) {
+      container.querySelectorAll('.toast').forEach(toast => {
+        toast.classList.add('hide');
+        toast.addEventListener('animationend', () => toast.remove());
+      });
+    }
+  },
+
+  /**
    * Display a confirmation dialog
    * @param {string} message - The message to display (supports HTML)
    * @param {Function} onConfirm - Callback when user confirms
@@ -233,6 +246,7 @@ async function pollTaskStatus(taskId, interval = 2000, maxAttempts = 60) {
       const task = await res.json();
 
       if (task.completed) {
+        Toaster.clearAll();
         if (task.status === "success") {
           Toaster.show(task.message || `${task.action} completed.`, "success");
         } else if (task.status === "error") {
@@ -397,7 +411,7 @@ async function loadContainers() {
           tr.innerHTML = `
             <td><strong>${r.container}</strong></td>
             <td>${r.device_name}</td>
-            <td><strong style="color: var(--color-primary);">${hostPort}</strong></td>
+            <td><a href="${API_URL}:${hostPort}" style="color: var(--color-primary);">${hostPort}</a></td>
             <td>${targetPort}</td>
             <td>
               <button class="delete-btn" onclick="deleteRedirection('${r.container}', '${r.device_name}')">Delete</button>

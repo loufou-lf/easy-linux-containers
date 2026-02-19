@@ -56,9 +56,9 @@ lxc launch "$CONTAINER_IMAGE" "$CONTAINER_NAME"
 sleep 5
 
 echo "[create] Updating and installing packages..."
-lxc exec "$CONTAINER_NAME" -- apt-get update
-lxc exec "$CONTAINER_NAME" -- apt-get -y upgrade
-lxc exec "$CONTAINER_NAME" -- apt-get -y install openssh-server python3 sudo
+lxc exec "$CONTAINER_NAME" -- bash -c "export DEBIAN_FRONTEND=noninteractive && apt-get update"
+lxc exec "$CONTAINER_NAME" -- bash -c "export DEBIAN_FRONTEND=noninteractive && apt-get -y upgrade"
+lxc exec "$CONTAINER_NAME" -- bash -c "export DEBIAN_FRONTEND=noninteractive && apt-get -y install openssh-server python3 sudo"
 
 # -----------------------------------------------------------------------------
 # User Setup
